@@ -326,6 +326,7 @@
   <nav class="admin-nav">
     <span class="logo-sm" id="adminLogoText">QR TRAIL</span>
     <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-sm btn-accent" onclick="exportForDeployment()" title="Bake your clues into the file and download for GitHub">🚀 Export for GitHub</button>
       <button class="btn btn-sm btn-outline" onclick="showSettingsModal()">⚙ Settings</button>
       <button class="btn btn-sm btn-outline" onclick="showPage('home')">Exit</button>
     </div>
@@ -530,11 +531,26 @@ const DEFAULT_STATE = {
   }]
 };
 
+// BAKED_STATE is injected by exportForDeployment() — DO NOT edit this line manually
+const BAKED_STATE = null;
+
 let state = loadState();
 let selectedClueIdx = null;
 
 function loadState() {
   try {
+    // If this file was exported with baked-in state, use that as the source of truth
+    // Player progress still comes from localStorage (per device)
+    if (BAKED_STATE) {
+      const s = JSON.parse(JSON.stringify(BAKED_STATE));
+      s.clues = (s.clues || []).map(c => ({
+        bgImage: null, bgImageName: '', bgImageFit: 'cover', bgOverlay: 0.45,
+        textColor: '#ffffff', accentColor: '#e8ff47', ...c
+      }));
+      s.adminTheme = { ...DEFAULT_ADMIN_THEME, ...(s.adminTheme || {}) };
+      return s;
+    }
+    // Otherwise fall back to localStorage (admin's own browser)
     const saved = localStorage.getItem('qrtrail_state');
     if (!saved) return JSON.parse(JSON.stringify(DEFAULT_STATE));
     const parsed = JSON.parse(saved);
@@ -543,7 +559,6 @@ function loadState() {
       textColor: '#ffffff', accentColor: '#e8ff47',
       ...c
     }));
-    // Migrate: ensure adminTheme exists
     parsed.adminTheme = { ...DEFAULT_ADMIN_THEME, ...(parsed.adminTheme || {}) };
     return parsed;
   } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_STATE)); }
@@ -1031,6 +1046,41 @@ function saveSettings() {
   document.getElementById('settingsOverlay').classList.remove('active');
   toast('Settings saved!', 'success');
   if (selectedClueIdx !== null) renderEditor(selectedClueIdx);
+}
+
+// ═══════════════════════════════════════════
+//  EXPORT FOR DEPLOYMENT
+// ═══════════════════════════════════════════
+function exportForDeployment() {
+  if (state.clues.length === 0) { toast('Add at least one stop before exporting.', 'error'); return; }
+
+  // Read the full source of this page
+  const source = document.documentElement.outerHTML;
+
+  // Serialize current state (excluding admin PIN for security — keep it local)
+  const exportState = JSON.parse(JSON.stringify(state));
+
+  // Replace the BAKED_STATE null placeholder with actual state
+  const stateJson = JSON.stringify(exportState);
+  const exported = source.replace(
+    'const BAKED_STATE = null;',
+    `const BAKED_STATE = ${stateJson};`
+  );
+
+  if (exported === source) {
+    toast('Export marker not found — refresh and try again.', 'error');
+    return;
+  }
+
+  // Download the baked file
+  const blob = new Blob([exported], { type: 'text/html' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'qr-orienteering.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  toast('Exported! Upload this file to GitHub to go live.', 'success');
 }
 
 // ═══════════════════════════════════════════
