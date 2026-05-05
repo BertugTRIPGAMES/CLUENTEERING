@@ -10,13 +10,11 @@ let state = {
     }]
 };
 
-// --- PAGE ROUTING (The Fix for the Blank/Same Page issue) ---
+// --- PAGE ROUTING ---
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const stopIdx = params.get('stop');
-
     if (stopIdx !== null) {
-        // If the URL has ?stop=X, show the Player View
         renderPlayerView(parseInt(stopIdx));
     }
 });
@@ -25,14 +23,13 @@ function renderPlayerView(idx) {
     const clue = state.clues[idx];
     if (!clue) return;
 
-    // Replace the whole screen with the Clue Card
     document.body.innerHTML = `
-        <div style="background: ${clue.bgImage ? 'black' : 'var(--bg)'}; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; font-family: sans-serif;">
-            <div style="background: var(--card); border: 2px solid ${clue.accentColor}; padding: 40px; border-radius: 20px; max-width: 500px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+        <div style="background: ${clue.bgImage ? 'url(' + clue.bgImage + ')' : 'var(--bg)'}; background-size: cover; background-position: center; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; font-family: sans-serif;">
+            <div style="background: rgba(26, 26, 26, 0.9); border: 2px solid ${clue.accentColor}; padding: 40px; border-radius: 20px; max-width: 500px; width: 100%; text-align: center; backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
                 <div style="color: ${clue.accentColor}; font-weight: bold; letter-spacing: 2px; margin-bottom: 10px;">STOP ${idx + 1}</div>
-                <h1 style="margin: 0 0 20px 0; font-size: 32px;">${clue.title}</h1>
+                <h1 style="margin: 0 0 20px 0; font-size: 32px; color: white;">${clue.title}</h1>
                 <p style="font-size: 18px; line-height: 1.6; color: #ccc;">${clue.clue}</p>
-                <button onclick="window.location.href=window.location.pathname" style="margin-top: 30px; background: transparent; border: 1px solid #444; color: #888; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Back to Admin</button>
+                <button onclick="window.location.href=window.location.pathname" style="margin-top: 30px; background: transparent; border: 1px solid #444; color: #888; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Admin Login</button>
             </div>
         </div>
     `;
@@ -74,13 +71,17 @@ function deleteClue(idx) {
     }
 }
 
-function updateGlobalAccent(val) {
-    document.documentElement.style.setProperty('--accent', val);
+function handleImage(idx, input) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        state.clues[idx].bgImage = e.target.result;
+        alert("Image uploaded! Check the Preview.");
+    };
+    reader.readAsDataURL(input.files[0]);
 }
 
 function openPreview(idx) {
     const stopUrl = window.location.pathname + "?stop=" + idx;
-    // Open in a named window to try and re-use the tab
     window.open(stopUrl, "clue_preview");
 }
 
@@ -97,18 +98,34 @@ function renderEditor(idx) {
                 <button class="btn btn-danger" onclick="deleteClue(${idx})">🗑 Delete</button>
             </div>
         </div>
+
         <div class="grid">
             <div class="editor-card">
                 <h3>QR CODE</h3>
                 <div id="qrcode" class="qr-box"></div>
-                <p style="font-size:10px; color:var(--muted); word-break:break-all;">${stopUrl}</p>
+                <p style="font-size:10px; color:var(--muted); word-break:break-all; margin-top:10px;">${stopUrl}</p>
             </div>
+
             <div class="editor-card">
                 <h3>CONTENT</h3>
                 <label>Title</label>
                 <input type="text" value="${clue.title}" oninput="state.clues[${idx}].title=this.value; renderSidebar()">
                 <label>Clue Text</label>
                 <textarea rows="5" oninput="state.clues[${idx}].clue=this.value">${clue.clue}</textarea>
+            </div>
+        </div>
+
+        <div class="editor-card">
+            <h3>VISUALS</h3>
+            <div class="grid">
+                <div>
+                    <label>Accent Color</label>
+                    <input type="color" value="${clue.accentColor}" oninput="state.clues[${idx}].accentColor=this.value">
+                </div>
+                <div>
+                    <label>Background Image</label>
+                    <input type="file" accept="image/*" onchange="handleImage(${idx}, this)">
+                </div>
             </div>
         </div>
     `;
