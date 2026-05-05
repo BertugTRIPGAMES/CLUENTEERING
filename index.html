@@ -1,138 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QR Trail</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent2: #ff6b35;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff3b3b;
+    --success: #47ff8a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; flex-direction: column; }
+
+  h1, h2, h3 { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
+  button { cursor: pointer; font-family: 'DM Sans', sans-serif; border: none; outline: none; }
+
+  input, textarea {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; font-size: 14px; width: 100%;
+    transition: border-color .2s;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  label { font-size: 13px; color: var(--muted); margin-bottom: 4px; display: block; }
+  .field { margin-bottom: 14px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 14px; font-weight: 600; transition: all .15s;
+  }
+  .btn-accent { background: var(--accent); color: #0a0a0a; }
+  .btn-accent:hover { background: #d4eb2a; }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 6px 14px; font-size: 13px; }
+
+  /* ── HOME ── */
+  #home {
+    align-items: center; justify-content: center;
+    text-align: center; gap: 40px;
+    background: radial-gradient(ellipse 60% 50% at 50% -10%, rgba(232,255,71,.12) 0%, transparent 70%), var(--bg);
+  }
+  #home .logo { font-size: clamp(60px,15vw,120px); line-height:1; color: var(--accent); }
+  #home .tagline { color: var(--muted); font-size: 16px; max-width: 320px; }
+  #home .home-btns { display: flex; flex-direction: column; gap: 12px; width: 260px; }
+  #home .home-btns button { width:100%; padding:14px; border-radius:10px; font-size:16px; font-weight:600; transition: all .15s; }
+
+  /* ── ADMIN ── */
+  #admin { background: var(--bg); }
+  .admin-nav {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 24px; border-bottom:1px solid var(--border);
+    position:sticky; top:0; background: var(--bg); z-index:10;
+  }
+  .admin-nav .logo-sm { font-size:28px; color: var(--accent); }
+  .admin-body { display:flex; flex:1; overflow:hidden; }
+
+  .sidebar {
+    width:280px; border-right:1px solid var(--border);
+    display:flex; flex-direction:column; padding:20px 0; overflow-y:auto;
+  }
+  .sidebar-title { font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); padding:0 20px 12px; }
+  .clue-list { flex:1; overflow-y:auto; }
+  .clue-item {
+    display:flex; align-items:center; gap:10px;
+    padding:12px 20px; cursor:pointer;
+    border-left:3px solid transparent; transition: all .15s;
+  }
+  .clue-item:hover { background: rgba(255,255,255,.04); }
+  .clue-item.selected { border-left-color: var(--accent); background: rgba(232,255,71,.06); }
+  .clue-num {
+    width:28px; height:28px; border-radius:50%;
+    background: var(--surface); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:600; flex-shrink:0; font-family:'Bebas Neue',sans-serif;
+  }
+  .clue-item.selected .clue-num { background: var(--accent); color:#0a0a0a; border-color: var(--accent); }
+  .clue-label { font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .clue-sublabel { font-size:11px; color:var(--muted); }
+  .sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); }
+
+  .editor { flex:1; padding:32px; overflow-y:auto; display:flex; flex-direction:column; gap:24px; }
+  .editor-header { display:flex; align-items:center; justify-content:space-between; }
+  .editor-card { background: var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; }
+  .editor-card h3 { font-size:22px; margin-bottom:18px; }
+
+  .qr-panel { display:flex; align-items:flex-start; gap:24px; flex-wrap:wrap; }
+  .qr-box { background:#fff; border-radius:10px; padding:14px; flex-shrink:0; }
+  .qr-info { flex:1; min-width:200px; }
+  .qr-url {
+    font-size:12px; color:var(--muted); word-break:break-all;
+    background: var(--bg); padding:8px 12px; border-radius:6px;
+    border:1px solid var(--border); margin-bottom:12px;
+  }
+
+  .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media(max-width:600px){ .settings-grid { grid-template-columns:1fr; } }
+
+  /* Image drop zone */
+  .img-dropzone {
+    border:2px dashed var(--border); border-radius:10px;
+    padding:32px 20px; text-align:center; cursor:pointer;
+    transition: all .2s; position:relative;
+  }
+  .img-dropzone:hover, .img-dropzone.dragover { border-color: var(--accent); background: rgba(232,255,71,.04); }
+  .img-dropzone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .img-dropzone .dz-icon { font-size:36px; margin-bottom:8px; }
+  .img-dropzone .dz-label { font-size:14px; color:var(--muted); }
+  .img-dropzone .dz-sub { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  .img-preview-wrap { border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .img-preview-wrap img { width:100%; height:160px; object-fit:cover; display:block; }
+  .img-preview-actions {
+    display:flex; gap:8px; padding:10px 12px;
+    background: var(--surface); border-top:1px solid var(--border);
+  }
+  .img-preview-actions span { font-size:12px; color:var(--muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; align-self:center; }
+
+  .img-fit-toggle { display:flex; gap:6px; margin-top:10px; }
+  .img-fit-btn {
+    flex:1; padding:7px; border-radius:6px; font-size:12px; font-weight:600;
+    background: var(--bg); color:var(--muted); border:1px solid var(--border);
+    cursor:pointer; transition: all .15s;
+  }
+  .img-fit-btn.active { background: rgba(232,255,71,.12); color: var(--accent); border-color: var(--accent); }
+
+  .overlay-strength { display:flex; gap:8px; align-items:center; margin-top:10px; }
+  .overlay-strength label { margin:0; white-space:nowrap; }
+  .overlay-strength input[type=range] { flex:1; accent-color: var(--accent); }
+
+  /* toast */
+  #toast {
+    position:fixed; bottom:24px; right:24px;
+    background: var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:12px 18px;
+    font-size:14px; color:var(--text);
+    transform:translateY(80px); opacity:0;
+    transition: all .3s; z-index:999; max-width:280px;
+  }
+  #toast.show { transform:translateY(0); opacity:1; }
+  #toast.success { border-color: var(--success); color: var(--success); }
+  #toast.error { border-color: var(--danger); color: var(--danger); }
+
+  /* ══════════════════════════════════════
+     PLAYER — fullscreen, no card
+  ══════════════════════════════════════ */
+  #player {
+    position: relative;
+    align-items: center; justify-content: center;
+    min-height: 100vh;
+    background-size: cover; background-position: center; background-repeat: no-repeat;
+    background-color: #0a0a0a;
+  }
+
+  /* Dark overlay so text is always readable */
+  #playerOverlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.45);
+    transition: background .3s;
+    z-index: 0;
+  }
+
+  /* All player content sits above the overlay */
+  #playerContent {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100vh;
+    width: 100%; max-width: 600px;
+    margin: 0 auto;
+    padding: 48px 32px;
+    text-align: center;
+  }
+
+  .stop-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; padding: 5px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .1em; margin-bottom: 24px;
+    backdrop-filter: blur(6px);
+  }
+
+  .progress-bar-wrap {
+    width: 100%; max-width: 320px;
+    background: rgba(255,255,255,0.15); border-radius: 99px;
+    height: 4px; margin-bottom: 36px; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 99px;
+    transition: width .6s ease;
+  }
+
+  .clue-title {
+    font-size: clamp(40px, 10vw, 80px);
+    line-height: 1; margin-bottom: 20px;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+  }
+
+  .clue-text {
+    font-size: clamp(16px, 3vw, 22px);
+    line-height: 1.7;
+    margin-bottom: 0;
+    white-space: pre-wrap;
+    text-shadow: 0 1px 10px rgba(0,0,0,0.7);
+    max-width: 480px;
+  }
+
+  .player-footer {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: rgba(255,255,255,0.35);
+    letter-spacing: .06em; text-transform: uppercase; z-index: 2;
+  }
+
+  /* overlays */
+  .overlay {
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    padding:24px; z-index:50; background:rgba(0,0,0,.85); backdrop-filter:blur(6px);
+  }
+  .overlay.active { display:flex; }
+  .overlay-card {
+    background: var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:40px 32px; max-width:400px; width:100%; text-align:center;
+  }
+  .overlay-icon { font-size:56px; margin-bottom:16px; }
+  .overlay-title { font-size:40px; margin-bottom:12px; }
+  .overlay-msg { color:var(--muted); font-size:15px; line-height:1.6; margin-bottom:24px; }
+
+  /* SETUP */
+  #setup { align-items:center; justify-content:center; padding:24px; }
+  .setup-card {
+    background: var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:36px 32px; max-width:480px; width:100%;
+  }
+  .setup-card h2 { font-size:32px; margin-bottom:6px; }
+  .setup-sub { color:var(--muted); font-size:14px; margin-bottom:28px; }
+  .pin-input { font-size:28px; letter-spacing:12px; text-align:center; font-family:'Bebas Neue',sans-serif; }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="page active">
+  <div class="logo">QR<br>TRAIL</div>
+  <p class="tagline">GPS-free orienteering powered by QR codes and clever clues.</p>
+  <div class="home-btns">
+    <button class="btn btn-accent" style="font-size:16px" onclick="showPage('setup')">⚙️ Admin Panel</button>
+    <button class="btn btn-outline" style="width:100%;font-size:14px;padding:12px" onclick="previewPlayer()">▶ Preview Player View</button>
+  </div>
+  <p style="color:var(--muted);font-size:12px">Players scan a QR code — they never see this screen.</p>
+</div>
+
+<!-- SETUP (PIN) -->
+<div id="setup" class="page">
+  <div class="setup-card">
+    <h2>ADMIN ACCESS</h2>
+    <p class="setup-sub">Enter your admin PIN to manage the trail.</p>
+    <div class="field">
+      <label>4-digit PIN</label>
+      <input type="password" id="pinInput" class="pin-input" maxlength="4" placeholder="••••" oninput="checkPin()" />
+    </div>
+    <div id="pinError" style="color:var(--danger);font-size:13px;margin-bottom:12px;display:none">Incorrect PIN. Try again.</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-outline" onclick="showPage('home')">← Back</button>
+      <button class="btn btn-accent" onclick="submitPin()">Enter →</button>
+    </div>
+    <p style="color:var(--muted);font-size:12px;margin-top:16px">Default PIN: <strong style="color:var(--accent)">1234</strong> — change it in Settings.</p>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" class="page">
+  <nav class="admin-nav">
+    <span class="logo-sm">QR TRAIL</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-sm btn-outline" onclick="showSettingsModal()">⚙ Settings</button>
+      <button class="btn btn-sm btn-outline" onclick="showPage('home')">Exit</button>
+    </div>
+  </nav>
+  <div class="admin-body">
+    <aside class="sidebar">
+      <div class="sidebar-title">Trail Stops</div>
+      <div class="clue-list" id="clueList"></div>
+      <div class="sidebar-footer">
+        <button class="btn btn-accent" style="width:100%" onclick="addClue()">+ Add Stop</button>
+      </div>
+    </aside>
+    <main class="editor" id="editorArea">
+      <div style="color:var(--muted);margin:auto;text-align:center">
+        <div style="font-size:48px">📍</div>
+        <p style="margin-top:12px">Select a stop from the sidebar or add a new one.</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- PLAYER — fullscreen, no card -->
+<div id="player" class="page">
+  <div id="playerOverlay"></div>
+  <div id="playerContent">
+    <div class="stop-badge" id="playerBadge">Stop 1 of 1</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressBar" style="width:0%;background:#e8ff47"></div>
+    </div>
+    <h2 class="clue-title" id="playerTitle">CLUE TITLE</h2>
+    <p class="clue-text" id="playerClue">Your clue text will appear here.</p>
+  </div>
+  <p class="player-footer" id="playerFooter">QR TRAIL</p>
+</div>
+
+<!-- Cheat overlay -->
+<div class="overlay" id="cheatOverlay">
+  <div class="overlay-card">
+    <div class="overlay-icon">🚫</div>
+    <h2 class="overlay-title">CHEATER!</h2>
+    <p class="overlay-msg" id="cheatMsg">You tried to skip ahead.</p>
+    <button class="btn btn-accent" onclick="closeCheatOverlay()">← Go Back</button>
+  </div>
+</div>
+
+<!-- Finish overlay -->
+<div class="overlay" id="finishOverlay">
+  <div class="overlay-card">
+    <div class="overlay-icon">🏆</div>
+    <h2 class="overlay-title">YOU DID IT!</h2>
+    <p class="overlay-msg" id="finishMsg">You completed the trail!</p>
+    <button class="btn btn-accent" onclick="closeFinishOverlay()">🎉 Celebrate</button>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="overlay" id="settingsOverlay">
+  <div class="overlay-card" style="text-align:left">
+    <h2 class="overlay-title" style="margin-bottom:18px">SETTINGS</h2>
+    <div class="field">
+      <label>Trail Name</label>
+      <input type="text" id="settingTrailName" placeholder="e.g. Campus Hunt 2025" />
+    </div>
+    <div class="field">
+      <label>Base URL (where this file is hosted)</label>
+      <input type="text" id="settingBaseUrl" placeholder="https://yourusername.github.io/your-repo/qr-orienteering.html" />
+    </div>
+    <div class="field">
+      <label>Finish Message</label>
+      <textarea id="settingFinishMsg" rows="2" placeholder="Congratulations! You completed the trail."></textarea>
+    </div>
+    <div class="field">
+      <label>Change Admin PIN</label>
+      <input type="password" id="settingPin" placeholder="New 4-digit PIN" maxlength="4" />
+    </div>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-outline" onclick="closeSettingsModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
 <script>
-// --- STATE MANAGEMENT ---
-let state = {
-    pin: '1234',
-    clues: [{ 
-        title: 'STARTING LINE', 
-        clue: 'Welcome to the trail! Find the first QR code near the main entrance.', 
-        accentColor: '#e8ff47',
-        bgImage: null 
-    }]
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+const DEFAULT_STATE = {
+  pin: '1234',
+  trailName: 'QR Trail',
+  baseUrl: window.location.href.split('?')[0],
+  finishMsg: 'You completed the trail. Amazing work!',
+  clues: [{
+    id: 'stop1',
+    title: 'THE BEGINNING',
+    clue: 'Look for the place where people wait in line for their morning fuel. The next clue is taped underneath.',
+    textColor: '#ffffff',
+    accentColor: '#e8ff47',
+    bgImage: null,
+    bgImageName: '',
+    bgImageFit: 'cover',
+    bgOverlay: 0.45
+  }]
 };
 
-// --- PAGE ROUTING ---
+let state = loadState();
+let selectedClueIdx = null;
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('qrtrail_state');
+    if (!saved) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    const parsed = JSON.parse(saved);
+    parsed.clues = (parsed.clues || []).map(c => ({
+      bgImage: null, bgImageName: '', bgImageFit: 'cover', bgOverlay: 0.45,
+      textColor: '#ffffff', accentColor: '#e8ff47',
+      ...c
+    }));
+    return parsed;
+  } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_STATE)); }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('qrtrail_state', JSON.stringify(state));
+  } catch(e) {
+    toast('Storage full — try using smaller/compressed images.', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════
+//  ROUTING
+// ═══════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
 window.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const stopIdx = params.get('stop');
-    if (stopIdx !== null) {
-        renderPlayerView(parseInt(stopIdx));
-    }
+  const params   = new URLSearchParams(window.location.search);
+  const stopParam = params.get('stop');
+  if (stopParam !== null) {
+    handlePlayerArrival(parseInt(stopParam, 10), getProgress());
+    showPage('player');
+  }
 });
 
-function renderPlayerView(idx) {
-    const clue = state.clues[idx];
-    if (!clue) return;
+// ═══════════════════════════════════════════
+//  PLAYER
+// ═══════════════════════════════════════════
+function getProgress() { return parseInt(localStorage.getItem('qrtrail_progress') || '0', 10); }
+function setProgress(n) { localStorage.setItem('qrtrail_progress', String(n)); }
 
-    document.body.innerHTML = `
-        <div style="background: ${clue.bgImage ? 'url(' + clue.bgImage + ')' : 'var(--bg)'}; background-size: cover; background-position: center; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; font-family: sans-serif;">
-            <div style="background: rgba(26, 26, 26, 0.9); border: 2px solid ${clue.accentColor}; padding: 40px; border-radius: 20px; max-width: 500px; width: 100%; text-align: center; backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-                <div style="color: ${clue.accentColor}; font-weight: bold; letter-spacing: 2px; margin-bottom: 10px;">STOP ${idx + 1}</div>
-                <h1 style="margin: 0 0 20px 0; font-size: 32px; color: white;">${clue.title}</h1>
-                <p style="font-size: 18px; line-height: 1.6; color: #ccc;">${clue.clue}</p>
-                <button onclick="window.location.href=window.location.pathname" style="margin-top: 30px; background: transparent; border: 1px solid #444; color: #888; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Admin Login</button>
-            </div>
-        </div>
-    `;
+function handlePlayerArrival(stopIdx, progress) {
+  if (stopIdx > progress) {
+    showCheatOverlay(progress + 1, stopIdx + 1);
+    return;
+  }
+  if (stopIdx >= progress) setProgress(stopIdx + 1);
+  if (stopIdx >= state.clues.length) { showFinishOverlay(); return; }
+
+  renderPlayer(state.clues[stopIdx], stopIdx, state.clues.length);
+
+  if (stopIdx === state.clues.length - 1) {
+    setTimeout(() => showFinishOverlay(), 1400);
+  }
 }
 
-// --- ADMIN FUNCTIONS ---
+function renderPlayer(clue, idx, total) {
+  const playerPage = document.getElementById('player');
+  const overlay    = document.getElementById('playerOverlay');
+
+  // Background image on the full page
+  if (clue.bgImage) {
+    playerPage.style.backgroundImage    = `url(${clue.bgImage})`;
+    playerPage.style.backgroundSize     = clue.bgImageFit || 'cover';
+    playerPage.style.backgroundPosition = 'center';
+  } else {
+    playerPage.style.backgroundImage = 'none';
+    playerPage.style.backgroundColor = '#0a0a0a';
+  }
+
+  // Overlay darkness
+  const alpha = clue.bgOverlay != null ? clue.bgOverlay : 0.45;
+  overlay.style.background = `rgba(0,0,0,${alpha})`;
+
+  // Text
+  document.getElementById('playerBadge').textContent = `Stop ${idx + 1} of ${total}`;
+  document.getElementById('playerTitle').textContent  = clue.title || `STOP ${idx + 1}`;
+  document.getElementById('playerClue').textContent   = clue.clue  || '';
+  document.getElementById('playerFooter').textContent = state.trailName.toUpperCase();
+
+  // Colors
+  const tc = clue.textColor  || '#ffffff';
+  const ac = clue.accentColor|| '#e8ff47';
+  document.getElementById('playerContent').style.color = tc;
+  document.getElementById('playerTitle').style.color   = ac;
+  document.getElementById('progressBar').style.background = ac;
+  document.getElementById('progressBar').style.width   = `${(idx / total) * 100}%`;
+}
+
+function previewPlayer() {
+  if (state.clues.length === 0) { toast('Add at least one stop first.', 'error'); return; }
+  const progress = getProgress();
+  const idx      = Math.min(progress, state.clues.length - 1);
+  renderPlayer(state.clues[idx], idx, state.clues.length);
+  showPage('player');
+}
+
+function showCheatOverlay(required, attempted) {
+  document.getElementById('cheatMsg').textContent =
+    `You tried to jump to Stop ${attempted} but you haven't reached Stop ${required} yet. Go find it first!`;
+  document.getElementById('cheatOverlay').classList.add('active');
+}
+function closeCheatOverlay() {
+  document.getElementById('cheatOverlay').classList.remove('active');
+  const idx = Math.max(0, getProgress() - 1);
+  window.location.href = `${state.baseUrl}?stop=${idx}`;
+}
+function showFinishOverlay() {
+  document.getElementById('finishMsg').textContent = state.finishMsg;
+  document.getElementById('finishOverlay').classList.add('active');
+}
+function closeFinishOverlay() { document.getElementById('finishOverlay').classList.remove('active'); }
+
+// ═══════════════════════════════════════════
+//  PIN
+// ═══════════════════════════════════════════
 function checkPin() {
-    if (document.getElementById('pinInput').value === state.pin) {
-        document.getElementById('pin').classList.remove('active');
-        document.getElementById('admin').classList.add('active');
-        renderSidebar();
-    }
+  document.getElementById('pinError').style.display = 'none';
+  if (document.getElementById('pinInput').value.length === 4) submitPin();
+}
+function submitPin() {
+  const entered = document.getElementById('pinInput').value;
+  if (entered === state.pin) {
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinError').style.display = 'none';
+    showPage('admin'); renderSidebar();
+  } else {
+    document.getElementById('pinError').style.display = 'block';
+  }
 }
 
+// ═══════════════════════════════════════════
+//  SIDEBAR
+// ═══════════════════════════════════════════
 function renderSidebar() {
-    const list = document.getElementById('clueList');
-    list.innerHTML = '';
-    state.clues.forEach((c, i) => {
-        const el = document.createElement('div');
-        el.className = 'clue-item';
-        el.innerHTML = `<span>${i + 1}</span> <strong>${c.title}</strong>`;
-        el.onclick = () => renderEditor(i);
-        list.appendChild(el);
-    });
+  const list = document.getElementById('clueList');
+  list.innerHTML = '';
+  state.clues.forEach((c, i) => {
+    const el = document.createElement('div');
+    el.className = 'clue-item' + (selectedClueIdx === i ? ' selected' : '');
+    el.innerHTML = `
+      <div class="clue-num">${i + 1}</div>
+      <div>
+        <div class="clue-label">${c.title || 'Untitled Stop'}</div>
+        <div class="clue-sublabel">Stop ${i + 1}${c.bgImage ? ' · 🖼' : ''}</div>
+      </div>`;
+    el.onclick = () => selectClue(i);
+    list.appendChild(el);
+  });
 }
 
 function addClue() {
-    state.clues.push({ title: 'NEW STOP', clue: 'Write your clue here...', accentColor: '#e8ff47', bgImage: null });
-    renderSidebar();
-    renderEditor(state.clues.length - 1);
+  state.clues.push({
+    id: 'stop' + Date.now(),
+    title: 'NEW STOP',
+    clue: 'Enter your clue here.',
+    textColor: '#ffffff',
+    accentColor: '#e8ff47',
+    bgImage: null, bgImageName: '', bgImageFit: 'cover', bgOverlay: 0.45
+  });
+  saveState(); renderSidebar(); selectClue(state.clues.length - 1);
+}
+
+function selectClue(idx) { selectedClueIdx = idx; renderSidebar(); renderEditor(idx); }
+
+// ═══════════════════════════════════════════
+//  EDITOR
+// ═══════════════════════════════════════════
+function renderEditor(idx) {
+  const c    = state.clues[idx];
+  const url  = `${state.baseUrl}?stop=${idx}`;
+  const qrId = `qr_${idx}`;
+  const hasImg = !!c.bgImage;
+  const ovPct  = Math.round((c.bgOverlay != null ? c.bgOverlay : 0.45) * 100);
+
+  document.getElementById('editorArea').innerHTML = `
+    <div class="editor-header">
+      <h2 style="font-size:28px">STOP ${idx + 1}</h2>
+      <div style="display:flex;gap:8px">
+        ${idx > 0 ? `<button class="btn btn-sm btn-outline" onclick="moveClue(${idx},${idx-1})">↑ Up</button>` : ''}
+        ${idx < state.clues.length-1 ? `<button class="btn btn-sm btn-outline" onclick="moveClue(${idx},${idx+1})">↓ Down</button>` : ''}
+        <button class="btn btn-sm btn-danger" onclick="deleteClue(${idx})">Delete</button>
+      </div>
+    </div>
+
+    <div class="editor-card">
+      <h3>QR CODE</h3>
+      <div class="qr-panel">
+        <div class="qr-box" id="${qrId}"></div>
+        <div class="qr-info">
+          <div class="qr-url">${url}</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+            Print this QR and place it at Stop ${idx + 1}.<br>
+            Players scanning out of order get sent back.
+          </p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-accent" onclick="downloadQR(${idx})">⬇ Download QR</button>
+            <button class="btn btn-sm btn-outline" onclick="copyUrl('${url}')">📋 Copy URL</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="editor-card">
+      <h3>CLUE CONTENT</h3>
+      <div class="field">
+        <label>Stop Title</label>
+        <input type="text" id="inputTitle" value="${escHtml(c.title)}" oninput="updateField('title',this.value)" placeholder="e.g. THE FOUNTAIN" />
+      </div>
+      <div class="field">
+        <label>Clue Text (shown to player)</label>
+        <textarea id="inputClue" oninput="updateField('clue',this.value)" placeholder="Describe where the next QR code is hidden...">${escHtml(c.clue)}</textarea>
+      </div>
+    </div>
+
+    <div class="editor-card">
+      <h3>APPEARANCE</h3>
+
+      <div class="field">
+        <label style="font-size:14px;color:var(--text);font-weight:600;margin-bottom:10px">Background Image (full screen)</label>
+        ${hasImg ? `
+          <div class="img-preview-wrap">
+            <img src="${c.bgImage}" alt="background preview" />
+            <div class="img-preview-actions">
+              <span>${escHtml(c.bgImageName || 'Custom image')}</span>
+              <button class="btn btn-sm btn-outline" onclick="triggerUpload(${idx})">Change</button>
+              <button class="btn btn-sm btn-danger" onclick="removeImage(${idx})">Remove</button>
+            </div>
+          </div>
+          <div class="img-fit-toggle">
+            <button class="img-fit-btn ${c.bgImageFit==='cover'?'active':''}" onclick="setFit(${idx},'cover',this)">Cover (fill)</button>
+            <button class="img-fit-btn ${c.bgImageFit==='contain'?'active':''}" onclick="setFit(${idx},'contain',this)">Contain (fit)</button>
+          </div>
+          <div class="overlay-strength">
+            <label>Overlay darkness</label>
+            <input type="range" min="0" max="90" value="${ovPct}" oninput="setOverlay(${idx},this.value)" />
+            <span id="overlayVal" style="font-size:12px;color:var(--muted);min-width:34px">${ovPct}%</span>
+          </div>
+        ` : `
+          <div class="img-dropzone" id="dropzone_${idx}">
+            <input type="file" accept="image/*" onchange="handleUpload(event,${idx})" onclick="event.stopPropagation()" />
+            <div class="dz-icon">🖼️</div>
+            <div class="dz-label">Click or drag & drop your image here</div>
+            <div class="dz-sub">JPG, PNG, WebP — use 1200×800px or larger for best results</div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:8px">
+            The image fills the entire screen behind your clue text.
+          </p>
+        `}
+      </div>
+
+      <div class="settings-grid" style="margin-top:8px">
+        <div class="field">
+          <label>Text Color</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" value="${c.textColor||'#ffffff'}" oninput="updateField('textColor',this.value)" style="width:44px;height:36px;padding:2px;border-radius:6px;cursor:pointer" />
+            <input type="text" value="${c.textColor||'#ffffff'}" oninput="updateField('textColor',this.value)" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Accent / Title Color</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" value="${c.accentColor||'#e8ff47'}" oninput="updateField('accentColor',this.value)" style="width:44px;height:36px;padding:2px;border-radius:6px;cursor:pointer" />
+            <input type="text" value="${c.accentColor||'#e8ff47'}" oninput="updateField('accentColor',this.value)" />
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Drag-and-drop wiring
+  const dz = document.getElementById(`dropzone_${idx}`);
+  if (dz) {
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) processImage(file, idx);
+      else toast('Please drop an image file.', 'error');
+    });
+  }
+
+  // QR
+  setTimeout(() => {
+    const el = document.getElementById(qrId);
+    if (el) { el.innerHTML = ''; new QRCode(el, { text: url, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.H }); }
+  }, 50);
+}
+
+// ═══════════════════════════════════════════
+//  IMAGE HANDLING
+// ═══════════════════════════════════════════
+function triggerUpload(idx) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = e => handleUpload(e, idx);
+  input.click();
+}
+
+function handleUpload(e, idx) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Please choose an image file.', 'error'); return; }
+  processImage(file, idx);
+}
+
+function processImage(file, idx) {
+  if (file.size > 2 * 1024 * 1024) toast('Large image detected — compress it if you hit storage limits.', '');
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.clues[idx].bgImage     = e.target.result;
+    state.clues[idx].bgImageName = file.name;
+    saveState(); renderSidebar(); renderEditor(idx);
+    toast('Image uploaded!', 'success');
+  };
+  reader.onerror = () => toast('Failed to read image.', 'error');
+  reader.readAsDataURL(file);
+}
+
+function removeImage(idx) {
+  state.clues[idx].bgImage = null;
+  state.clues[idx].bgImageName = '';
+  saveState(); renderSidebar(); renderEditor(idx);
+  toast('Image removed.');
+}
+
+function setFit(idx, fit, btn) {
+  state.clues[idx].bgImageFit = fit;
+  saveState();
+  document.querySelectorAll('.img-fit-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setOverlay(idx, val) {
+  state.clues[idx].bgOverlay = parseInt(val, 10) / 100;
+  document.getElementById('overlayVal').textContent = val + '%';
+  saveState();
+}
+
+// ═══════════════════════════════════════════
+//  FIELD UPDATES
+// ═══════════════════════════════════════════
+function updateField(field, value) {
+  if (selectedClueIdx === null) return;
+  state.clues[selectedClueIdx][field] = value;
+  saveState(); renderSidebar();
+}
+
+function moveClue(from, to) {
+  const arr = state.clues;
+  [arr[from], arr[to]] = [arr[to], arr[from]];
+  saveState(); selectedClueIdx = to; renderSidebar(); renderEditor(to);
+  toast('Stop reordered.');
 }
 
 function deleteClue(idx) {
-    if (state.clues.length <= 1) return alert("Must have at least one stop.");
-    if (confirm("Delete this stop?")) {
-        state.clues.splice(idx, 1);
-        renderSidebar();
-        document.getElementById('editorArea').innerHTML = '<h2>Select a stop</h2>';
-    }
+  if (!confirm(`Delete Stop ${idx + 1}? This cannot be undone.`)) return;
+  state.clues.splice(idx, 1);
+  saveState(); selectedClueIdx = null; renderSidebar();
+  document.getElementById('editorArea').innerHTML = `
+    <div style="color:var(--muted);margin:auto;text-align:center">
+      <div style="font-size:48px">📍</div>
+      <p style="margin-top:12px">Select a stop or add a new one.</p>
+    </div>`;
 }
 
-function handleImage(idx, input) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        state.clues[idx].bgImage = e.target.result;
-        alert("Image uploaded! Check the Preview.");
-    };
-    reader.readAsDataURL(input.files[0]);
+function downloadQR(idx) {
+  const canvas = document.querySelector(`#qr_${idx} canvas`);
+  if (!canvas) { toast('QR not ready yet.', 'error'); return; }
+  const a = document.createElement('a');
+  a.download = `qr-stop-${idx + 1}.png`;
+  a.href = canvas.toDataURL(); a.click();
+  toast('QR downloaded!', 'success');
 }
 
-function openPreview(idx) {
-    const stopUrl = window.location.pathname + "?stop=" + idx;
-    window.open(stopUrl, "clue_preview");
+function copyUrl(url) {
+  navigator.clipboard.writeText(url)
+    .then(() => toast('URL copied!', 'success'))
+    .catch(() => toast('Copy failed.', 'error'));
 }
 
-function renderEditor(idx) {
-    const clue = state.clues[idx];
-    const area = document.getElementById('editorArea');
-    const stopUrl = window.location.origin + window.location.pathname + "?stop=" + idx;
+// ═══════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════
+function showSettingsModal() {
+  document.getElementById('settingTrailName').value = state.trailName;
+  document.getElementById('settingBaseUrl').value   = state.baseUrl;
+  document.getElementById('settingFinishMsg').value = state.finishMsg;
+  document.getElementById('settingPin').value       = '';
+  document.getElementById('settingsOverlay').classList.add('active');
+}
+function closeSettingsModal() { document.getElementById('settingsOverlay').classList.remove('active'); }
+function saveSettings() {
+  state.trailName = document.getElementById('settingTrailName').value.trim() || 'QR Trail';
+  state.baseUrl   = document.getElementById('settingBaseUrl').value.trim()   || window.location.href.split('?')[0];
+  state.finishMsg = document.getElementById('settingFinishMsg').value.trim() || state.finishMsg;
+  const newPin    = document.getElementById('settingPin').value.trim();
+  if (newPin.length === 4 && /^\d{4}$/.test(newPin)) state.pin = newPin;
+  saveState(); closeSettingsModal(); toast('Settings saved!', 'success');
+  if (selectedClueIdx !== null) renderEditor(selectedClueIdx);
+}
 
-    area.innerHTML = `
-        <div class="editor-header">
-            <h1>Editing Stop ${idx + 1}</h1>
-            <div>
-                <button class="btn btn-outline" onclick="openPreview(${idx})">👁️ Preview</button>
-                <button class="btn btn-danger" onclick="deleteClue(${idx})">🗑 Delete</button>
-            </div>
-        </div>
-
-        <div class="grid">
-            <div class="editor-card">
-                <h3>QR CODE</h3>
-                <div id="qrcode" class="qr-box"></div>
-                <p style="font-size:10px; color:var(--muted); word-break:break-all; margin-top:10px;">${stopUrl}</p>
-            </div>
-
-            <div class="editor-card">
-                <h3>CONTENT</h3>
-                <label>Title</label>
-                <input type="text" value="${clue.title}" oninput="state.clues[${idx}].title=this.value; renderSidebar()">
-                <label>Clue Text</label>
-                <textarea rows="5" oninput="state.clues[${idx}].clue=this.value">${clue.clue}</textarea>
-            </div>
-        </div>
-
-        <div class="editor-card">
-            <h3>VISUALS</h3>
-            <div class="grid">
-                <div>
-                    <label>Accent Color</label>
-                    <input type="color" value="${clue.accentColor}" oninput="state.clues[${idx}].accentColor=this.value">
-                </div>
-                <div>
-                    <label>Background Image</label>
-                    <input type="file" accept="image/*" onchange="handleImage(${idx}, this)">
-                </div>
-            </div>
-        </div>
-    `;
-
-    new QRCode(document.getElementById("qrcode"), {
-        text: stopUrl,
-        width: 150, height: 150
-    });
+// ═══════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+let toastTimer;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3000);
 }
 </script>
+</body>
+</html>
