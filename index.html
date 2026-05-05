@@ -8,19 +8,12 @@
     <style>
         :root {
             --bg: #0f0f0f; --card: #1a1a1a; --text: #ffffff; --muted: #888;
-            --accent: #e8ff47; --danger: #ff4747; --border: #333;
+            --accent: #e8ff47; --border: #333;
         }
-        body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); }
         .page { display: none; min-height: 100vh; padding: 20px; box-sizing: border-box; }
         .page.active { display: flex; flex-direction: column; }
         
-        /* PIN PAGE */
-        #pin { align-items: center; justify-content: center; text-align: center; }
-        input[type="password"] { 
-            background: #222; border: 2px solid var(--border); color: white; 
-            padding: 15px; font-size: 24px; border-radius: 8px; width: 120px; text-align: center;
-        }
-
         /* ADMIN LAYOUT */
         .admin-shell { display: grid; grid-template-columns: 280px 1fr; height: 100vh; margin: -20px; }
         .sidebar { background: #151515; border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
@@ -28,65 +21,72 @@
         
         .clue-item { 
             padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
-            border: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+            border: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: #1a1a1a;
         }
+        .clue-item:hover { border-color: var(--muted); }
         .clue-item.selected { border-color: var(--accent); background: #222; }
         
-        .btn { 
-            padding: 10px 20px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold;
-            transition: 0.2s;
-        }
+        .btn { padding: 10px 20px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; transition: 0.2s; }
         .btn-accent { background: var(--accent); color: black; }
-        .btn-danger { background: var(--danger); color: white; }
-        
+        .btn-danger { background: #ff4747; color: white; margin-left: 10px; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: white; }
+
         .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .editor-card { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border); }
         
-        textarea, input[type="text"] {
-            width: 100%; padding: 12px; background: #000; border: 1px solid var(--border);
-            color: white; border-radius: 6px; margin-top: 8px; box-sizing: border-box;
-        }
+        label { display: block; margin: 15px 0 5px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+        textarea, input { width: 100%; padding: 12px; background: #000; border: 1px solid var(--border); color: white; border-radius: 6px; box-sizing: border-box; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .qr-box { background: white; padding: 10px; display: inline-block; border-radius: 8px; }
     </style>
 </head>
 <body>
 
-<!-- PIN PAGE -->
-<div id="pin" class="page active">
+<div id="pin" class="page active" style="align-items:center; justify-content:center; text-align:center;">
     <h1>CLUENTEERING</h1>
-    <p style="color:var(--muted)">Enter Admin PIN to begin</p>
-    <input type="password" id="pinInput" maxlength="4" placeholder="0000" oninput="checkPin()">
-    <p id="pinError" style="color:var(--danger); display:none; margin-top:10px;">Incorrect PIN</p>
+    <p style="color:var(--muted)">Admin Access</p>
+    <input type="password" id="pinInput" maxlength="4" style="width:100px; font-size:24px; text-align:center;" oninput="checkPin()">
 </div>
 
-<!-- ADMIN PAGE -->
 <div id="admin" class="page">
     <div class="admin-shell">
         <div class="sidebar">
             <h3 style="margin-top:0">STOPS</h3>
             <div id="clueList"></div>
             <button class="btn btn-accent" style="width:100%; margin-top:10px" onclick="addClue()">+ Add Stop</button>
+            
+            <h3 style="margin-top:40px">GLOBAL THEME</h3>
+            <label>Accent Color</label>
+            <input type="color" id="globalAccent" oninput="updateGlobalAccent(this.value)">
+            <label>Card BG</label>
+            <input type="color" oninput="document.documentElement.style.setProperty('--card', this.value)">
         </div>
+        
         <div class="editor" id="editorArea">
-            <!-- Content loaded via JS -->
+            <div style="text-align:center; color:var(--muted); margin-top:100px;">
+                <h2>Select a stop to customize</h2>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// Paste the logic from before here
 let state = {
     pin: '1234',
-    clues: [{ title: 'START', clue: 'Find the blue door.', accentColor: '#e8ff47' }]
+    clues: [{ 
+        title: 'STARTING LINE', 
+        clue: 'Welcome to the trail! Find the first QR code near the main entrance.', 
+        accentColor: '#e8ff47',
+        bgImage: null 
+    }]
 };
 
 function checkPin() {
-    const input = document.getElementById('pinInput');
-    if (input.value === state.pin) {
+    if (document.getElementById('pinInput').value === state.pin) {
         document.getElementById('pin').classList.remove('active');
         document.getElementById('admin').classList.add('active');
         renderSidebar();
-    } else if (input.value.length === 4) {
-        document.getElementById('pinError').style.display = 'block';
     }
 }
 
@@ -103,35 +103,82 @@ function renderSidebar() {
 }
 
 function addClue() {
-    state.clues.push({ title: 'NEW STOP', clue: 'New clue text...', accentColor: '#e8ff47' });
+    state.clues.push({ title: 'NEW STOP', clue: 'Write your clue here...', accentColor: '#e8ff47', bgImage: null });
     renderSidebar();
     renderEditor(state.clues.length - 1);
 }
 
 function deleteClue(idx) {
-    if (state.clues.length <= 1) return alert("You need at least one stop!");
-    if (confirm("Delete this stop?")) {
+    if (state.clues.length <= 1) return alert("Must have at least one stop.");
+    if (confirm("Delete this stop permanently?")) {
         state.clues.splice(idx, 1);
         renderSidebar();
-        document.getElementById('editorArea').innerHTML = '';
+        document.getElementById('editorArea').innerHTML = '<h2>Select a stop</h2>';
     }
+}
+
+function updateGlobalAccent(val) {
+    document.documentElement.style.setProperty('--accent', val);
+}
+
+function handleImage(idx, input) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        state.clues[idx].bgImage = e.target.result;
+        alert("Image uploaded for this stop!");
+    };
+    reader.readAsDataURL(input.files[0]);
 }
 
 function renderEditor(idx) {
     const clue = state.clues[idx];
     const area = document.getElementById('editorArea');
+    const stopUrl = window.location.href.split('?')[0] + "?stop=" + idx;
+
     area.innerHTML = `
         <div class="editor-header">
-            <h2>Edit Stop ${idx + 1}</h2>
-            <button class="btn btn-danger" onclick="deleteClue(${idx})">🗑 Delete</button>
+            <h1>Editing Stop ${idx + 1}</h1>
+            <div>
+                <button class="btn btn-outline" onclick="window.open('${stopUrl}')">👁️ Preview</button>
+                <button class="btn btn-danger" onclick="deleteClue(${idx})">🗑 Delete</button>
+            </div>
         </div>
+
+        <div class="grid">
+            <div class="editor-card">
+                <h3>QR CODE</h3>
+                <div id="qrcode" class="qr-box"></div>
+                <p style="font-size:12px; color:var(--muted); margin-top:10px;">${stopUrl}</p>
+            </div>
+
+            <div class="editor-card">
+                <h3>CONTENT</h3>
+                <label>Title</label>
+                <input type="text" value="${clue.title}" oninput="state.clues[${idx}].title=this.value; renderSidebar()">
+                <label>Clue Text</label>
+                <textarea rows="5" oninput="state.clues[${idx}].clue=this.value">${clue.clue}</textarea>
+            </div>
+        </div>
+
         <div class="editor-card">
-            <label>Stop Title</label>
-            <input type="text" value="${clue.title}" oninput="state.clues[${idx}].title=this.value; renderSidebar()">
-            <label style="display:block; margin-top:15px">Clue Text</label>
-            <textarea rows="4" oninput="state.clues[${idx}].clue=this.value">${clue.clue}</textarea>
+            <h3>VISUAL OVERRIDES</h3>
+            <div class="grid">
+                <div>
+                    <label>Stop Accent Color</label>
+                    <input type="color" value="${clue.accentColor}" oninput="state.clues[${idx}].accentColor=this.value">
+                </div>
+                <div>
+                    <label>Background Image</label>
+                    <input type="file" accept="image/*" onchange="handleImage(${idx}, this)">
+                </div>
+            </div>
         </div>
     `;
+
+    new QRCode(document.getElementById("qrcode"), {
+        text: stopUrl,
+        width: 150, height: 150
+    });
 }
 </script>
 </body>
