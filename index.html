@@ -1,443 +1,138 @@
-```javascript
-// ═══════════════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════════════
-const DEFAULT_STATE = {
-  pin: '1234',
-  trailName: 'QR Trail',
-  baseUrl: window.location.href.split('?')[0],
-  finishMsg: 'You completed the trail. Amazing work!',
-  theme: { ...DEFAULT_THEME },
-  clues: [
-    {
-      id: 'stop1',
-      title: 'THE BEGINNING',
-      clue: 'Look for the place where people wait in line for their morning fuel. The next clue is taped underneath.',
-      bgColor: '#141414',
-      textColor: '#f0f0f0',
-      accentColor: '#e8ff47',
-      bgImage: null,
-      bgImageName: '',
-      bgImageFit: 'cover',
-      bgOverlay: 0.45,
-      applyToPage: true
-    }
-  ]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLUENTEERING | QR Trail</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f0f0f; --card: #1a1a1a; --text: #ffffff; --muted: #888;
+            --accent: #e8ff47; --danger: #ff4747; --border: #333;
+        }
+        body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+        .page { display: none; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        .page.active { display: flex; flex-direction: column; }
+        
+        /* PIN PAGE */
+        #pin { align-items: center; justify-content: center; text-align: center; }
+        input[type="password"] { 
+            background: #222; border: 2px solid var(--border); color: white; 
+            padding: 15px; font-size: 24px; border-radius: 8px; width: 120px; text-align: center;
+        }
+
+        /* ADMIN LAYOUT */
+        .admin-shell { display: grid; grid-template-columns: 280px 1fr; height: 100vh; margin: -20px; }
+        .sidebar { background: #151515; border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
+        .editor { padding: 40px; overflow-y: auto; background: var(--bg); }
+        
+        .clue-item { 
+            padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
+            border: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+        }
+        .clue-item.selected { border-color: var(--accent); background: #222; }
+        
+        .btn { 
+            padding: 10px 20px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold;
+            transition: 0.2s;
+        }
+        .btn-accent { background: var(--accent); color: black; }
+        .btn-danger { background: var(--danger); color: white; }
+        
+        .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .editor-card { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border); }
+        
+        textarea, input[type="text"] {
+            width: 100%; padding: 12px; background: #000; border: 1px solid var(--border);
+            color: white; border-radius: 6px; margin-top: 8px; box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+<!-- PIN PAGE -->
+<div id="pin" class="page active">
+    <h1>CLUENTEERING</h1>
+    <p style="color:var(--muted)">Enter Admin PIN to begin</p>
+    <input type="password" id="pinInput" maxlength="4" placeholder="0000" oninput="checkPin()">
+    <p id="pinError" style="color:var(--danger); display:none; margin-top:10px;">Incorrect PIN</p>
+</div>
+
+<!-- ADMIN PAGE -->
+<div id="admin" class="page">
+    <div class="admin-shell">
+        <div class="sidebar">
+            <h3 style="margin-top:0">STOPS</h3>
+            <div id="clueList"></div>
+            <button class="btn btn-accent" style="width:100%; margin-top:10px" onclick="addClue()">+ Add Stop</button>
+        </div>
+        <div class="editor" id="editorArea">
+            <!-- Content loaded via JS -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Paste the logic from before here
+let state = {
+    pin: '1234',
+    clues: [{ title: 'START', clue: 'Find the blue door.', accentColor: '#e8ff47' }]
 };
 
-let state = loadState();
-let selectedClueIdx = null;
-
-function loadState() {
-  try {
-    const saved = localStorage.getItem('qrtrail_state');
-    if (!saved) return JSON.parse(JSON.stringify(DEFAULT_STATE));
-    const parsed = JSON.parse(saved);
-    parsed.clues = (parsed.clues || []).map(c => ({
-      bgImage: null, bgImageName: '', bgImageFit: 'cover', bgOverlay: 0.45, applyToPage: true,
-      ...c
-    }));
-    parsed.theme = { ...DEFAULT_THEME, ...(parsed.theme || {}) };
-    return parsed;
-  } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_STATE)); }
-}
-
-function saveState() {
-  try {
-    localStorage.setItem('qrtrail_state', JSON.stringify(state));
-  } catch(e) {
-    toast('Storage full — try smaller images or fewer stops.', 'error');
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  APPLY THEME to CSS variables
-// ═══════════════════════════════════════════════════════════════
-function applyTheme(t) {
-  const r = document.documentElement.style;
-  r.setProperty('--th-card-bg',        t.cardBg);
-  r.setProperty('--th-card-border',    t.cardBorder);
-  r.setProperty('--th-card-radius',    t.cardRadius + 'px');
-  r.setProperty('--th-card-padding',   t.cardPadding + 'px');
-  r.setProperty('--th-card-shadow',    t.cardShadow || 'none');
-  r.setProperty('--th-title-font',     t.titleFont);
-  r.setProperty('--th-title-size',     t.titleSize + 'px');
-  r.setProperty('--th-body-font',      t.bodyFont);
-  r.setProperty('--th-body-size',      t.bodySize + 'px');
-  r.setProperty('--th-clue-color',     t.clueColor);
-  r.setProperty('--th-accent-color',   t.accentColor);
-  r.setProperty('--th-badge-bg',       t.badgeBg);
-  r.setProperty('--th-badge-border',   t.badgeBorder);
-  r.setProperty('--th-progress-from',  t.progressFrom);
-  r.setProperty('--th-progress-to',    t.progressTo);
-  r.setProperty('--th-progress-height',t.progressHeight + 'px');
-  r.setProperty('--th-bar-top',        t.barTop + 'px');
-  r.setProperty('--th-bar-from',       t.barFrom);
-  r.setProperty('--th-bar-to',         t.barTo);
-  r.setProperty('--th-page-bg',        t.pageBg);
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  ROUTING
-// ═══════════════════════════════════════════════════════════════
-function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-  applyTheme(state.theme);
-  const params = new URLSearchParams(window.location.search);
-  const stopParam = params.get('stop');
-  if (stopParam !== null) {
-    const stopIdx = parseInt(stopParam, 10);
-    handlePlayerArrival(stopIdx, getProgress());
-    showPage('player');
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════
-//  PLAYER
-// ═══════════════════════════════════════════════════════════════
-function getProgress() { return parseInt(localStorage.getItem('qrtrail_progress') || '0', 10); }
-function setProgress(n) { localStorage.setItem('qrtrail_progress', String(n)); }
-
-function handlePlayerArrival(stopIdx, progress) {
-  const clues = state.clues;
-  if (stopIdx > progress) { showCheatOverlay(progress + 1, stopIdx + 1); return; }
-  if (stopIdx >= progress) setProgress(stopIdx + 1);
-  if (stopIdx >= clues.length) { showFinishOverlay(); return; }
-  const clue = clues[stopIdx];
-  renderPlayerCard(clue, stopIdx, clues.length);
-  if (stopIdx === clues.length - 1) setTimeout(() => showFinishOverlay(), 1200);
-}
-
-function renderPlayerCard(clue, idx, total) {
-  const playerPage = document.getElementById('player');
-  const card       = document.getElementById('playerCard');
-  const overlay    = document.getElementById('cardOverlay');
-
-  document.getElementById('playerBadge').textContent = `Stop ${idx + 1} of ${total}`;
-  document.getElementById('playerTitle').textContent  = clue.title || `STOP ${idx + 1}`;
-  document.getElementById('playerClue').textContent   = clue.clue  || '';
-  document.getElementById('playerFooter').textContent = `Trail: ${state.trailName}`;
-  document.getElementById('progressBar').style.width  = `${(idx / total) * 100}%`;
-
-  document.getElementById('playerTitle').style.color  = clue.accentColor || state.theme.accentColor;
-  document.getElementById('playerBadge').style.color  = clue.accentColor || state.theme.accentColor;
-  document.getElementById('playerBadge').style.borderColor = (clue.accentColor || state.theme.accentColor) + '55';
-
-  if (clue.bgImage) {
-    card.style.backgroundImage    = `url(${clue.bgImage})`;
-    card.style.backgroundSize     = clue.bgImageFit || 'cover';
-    card.style.backgroundPosition = 'center';
-    card.style.backgroundRepeat   = 'no-repeat';
-    card.style.backgroundColor    = 'transparent';
-    card.style.border             = 'none';
-    const alpha = clue.bgOverlay != null ? clue.bgOverlay : 0.45;
-    overlay.style.background = `rgba(0,0,0,${alpha})`;
-    if (clue.applyToPage) {
-      playerPage.style.backgroundImage    = `url(${clue.bgImage})`;
-      playerPage.style.backgroundSize     = 'cover';
-      playerPage.style.backgroundPosition = 'center';
-    } else {
-      playerPage.style.backgroundImage = 'none';
-    }
-  } else {
-    card.style.backgroundImage = 'none';
-    card.style.border = '';
-    overlay.style.background = 'rgba(0,0,0,0)';
-    playerPage.style.backgroundImage = 'none';
-  }
-}
-
-function loadPlayerView() {
-  if (state.clues.length === 0) { toast('Add at least one stop first.', 'error'); return; }
-  const progress = getProgress();
-  const stopIdx  = Math.min(progress, state.clues.length - 1);
-  renderPlayerCard(state.clues[stopIdx], stopIdx, state.clues.length);
-}
-
-function showCheatOverlay(required, attempted) {
-  document.getElementById('cheatMsg').textContent =
-    `You tried to jump to Stop ${attempted} but you haven't reached Stop ${required} yet. Go find it first!`;
-  document.getElementById('cheatOverlay').classList.add('active');
-}
-function closeCheatOverlay() {
-  document.getElementById('cheatOverlay').classList.remove('active');
-  const progress = getProgress();
-  const stopIdx  = Math.max(0, progress - 1);
-  window.location.href = `${state.baseUrl}?stop=${stopIdx}`;
-}
-function showFinishOverlay() {
-  document.getElementById('finishMsg').textContent = state.finishMsg;
-  document.getElementById('finishOverlay').classList.add('active');
-}
-function closeFinishOverlay() { document.getElementById('finishOverlay').classList.remove('active'); }
-
-// ═══════════════════════════════════════════════════════════════
-//  PIN & ADMIN
-// ═══════════════════════════════════════════════════════════════
 function checkPin() {
-  document.getElementById('pinError').style.display = 'none';
-  if (document.getElementById('pinInput').value.length === 4) submitPin();
-}
-function submitPin() {
-  const entered = document.getElementById('pinInput').value;
-  if (entered === state.pin) {
-    document.getElementById('pinInput').value = '';
-    document.getElementById('pinError').style.display = 'none';
-    showPage('admin');
-    renderSidebar();
-    renderThemeStudio();
-  } else {
-    document.getElementById('pinError').style.display = 'block';
-  }
-}
-
-function switchSidebarTab(tab, btn) {
-  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.sidebar-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('panel-' + tab).classList.add('active');
-  if (tab === 'theme') renderThemeStudio();
+    const input = document.getElementById('pinInput');
+    if (input.value === state.pin) {
+        document.getElementById('pin').classList.remove('active');
+        document.getElementById('admin').classList.add('active');
+        renderSidebar();
+    } else if (input.value.length === 4) {
+        document.getElementById('pinError').style.display = 'block';
+    }
 }
 
 function renderSidebar() {
-  const list = document.getElementById('clueList');
-  list.innerHTML = '';
-  state.clues.forEach((c, i) => {
-    const el = document.createElement('div');
-    el.className = 'clue-item' + (selectedClueIdx === i ? ' selected' : '');
-    el.innerHTML = `
-      <div class="clue-num">${i + 1}</div>
-      <div>
-        <div class="clue-label">${c.title || 'Untitled Stop'}</div>
-        <div class="clue-sublabel">Stop ${i + 1}${c.bgImage ? ' · 🖼' : ''}</div>
-      </div>`;
-    el.onclick = () => selectClue(i);
-    list.appendChild(el);
-  });
+    const list = document.getElementById('clueList');
+    list.innerHTML = '';
+    state.clues.forEach((c, i) => {
+        const el = document.createElement('div');
+        el.className = 'clue-item';
+        el.innerHTML = `<span>${i + 1}</span> <strong>${c.title}</strong>`;
+        el.onclick = () => renderEditor(i);
+        list.appendChild(el);
+    });
 }
 
 function addClue() {
-  state.clues.push({
-    id: 'stop' + Date.now(),
-    title: 'NEW STOP',
-    clue: 'Enter your clue here.',
-    bgColor: '#141414',
-    textColor: '#f0f0f0',
-    accentColor: '#e8ff47',
-    bgImage: null,
-    bgImageName: '',
-    bgImageFit: 'cover',
-    bgOverlay: 0.45,
-    applyToPage: true
-  });
-  saveState();
-  renderSidebar();
-  selectClue(state.clues.length - 1);
-}
-
-function selectClue(idx) {
-  selectedClueIdx = idx;
-  renderSidebar();
-  renderEditor();
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  DELETE CLUE (The part you requested!)
-// ═══════════════════════════════════════════════════════════════
-function deleteClue(idx) {
-  if (state.clues.length <= 1) {
-    toast("You can't delete the only stop! A trail needs at least one.", "error");
-    return;
-  }
-  
-  if (confirm(`Are you sure you want to delete Stop ${idx + 1}? This cannot be undone.`)) {
-    state.clues.splice(idx, 1);
-    selectedClueIdx = null; // Clear selection
-    saveState();
+    state.clues.push({ title: 'NEW STOP', clue: 'New clue text...', accentColor: '#e8ff47' });
     renderSidebar();
-    renderEditor();
-    toast("Stop removed.");
-  }
+    renderEditor(state.clues.length - 1);
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  EDITOR
-// ═══════════════════════════════════════════════════════════════
-function renderEditor() {
-  const container = document.getElementById('editorArea');
-  if (selectedClueIdx === null || !state.clues[selectedClueIdx]) {
-    container.innerHTML = `
-      <div style="color:var(--muted);margin:auto;text-align:center">
-        <div style="font-size:48px">📍</div>
-        <p style="margin-top:12px">Select a stop from the sidebar or add a new one.</p>
-      </div>`;
-    return;
-  }
+function deleteClue(idx) {
+    if (state.clues.length <= 1) return alert("You need at least one stop!");
+    if (confirm("Delete this stop?")) {
+        state.clues.splice(idx, 1);
+        renderSidebar();
+        document.getElementById('editorArea').innerHTML = '';
+    }
+}
 
-  const clue = state.clues[selectedClueIdx];
-  const stopUrl = `${state.baseUrl}?stop=${selectedClueIdx}`;
-
-  container.innerHTML = `
-    <div class="editor-header">
-      <h2>Edit Stop ${selectedClueIdx + 1}</h2>
-      <button class="btn btn-danger btn-sm" onclick="deleteClue(${selectedClueIdx})">🗑️ Delete Stop</button>
-    </div>
-
-    <div class="editor-card">
-      <h3>QR Code</h3>
-      <div class="qr-panel">
-        <div id="qrcode" class="qr-box"></div>
-        <div class="qr-info">
-          <label>Stop URL</label>
-          <div class="qr-url">${stopUrl}</div>
-          <button class="btn btn-outline btn-sm" onclick="downloadQR(${selectedClueIdx})">Download QR (PNG)</button>
+function renderEditor(idx) {
+    const clue = state.clues[idx];
+    const area = document.getElementById('editorArea');
+    area.innerHTML = `
+        <div class="editor-header">
+            <h2>Edit Stop ${idx + 1}</h2>
+            <button class="btn btn-danger" onclick="deleteClue(${idx})">🗑 Delete</button>
         </div>
-      </div>
-    </div>
-
-    <div class="editor-card">
-      <h3>Content</h3>
-      <div class="field">
-        <label>Title</label>
-        <input type="text" value="${clue.title || ''}" oninput="updateClue('title', this.value)" placeholder="e.g. THE FOUNTAIN">
-      </div>
-      <div class="field">
-        <label>Clue Text</label>
-        <textarea oninput="updateClue('clue', this.value)" placeholder="Next instructions...">${clue.clue || ''}</textarea>
-      </div>
-    </div>
-
-    <div class="editor-card">
-      <h3>Visuals</h3>
-      <div class="settings-grid">
-        <div>
-          <label>Background Image</label>
-          ${clue.bgImage ? `
-            <div class="img-preview-wrap">
-              <img src="${clue.bgImage}">
-              <div class="img-preview-actions">
-                <span>${clue.bgImageName}</span>
-                <button class="btn btn-danger btn-sm" style="padding:4px 8px" onclick="removeImage()">Remove</button>
-              </div>
-            </div>
-            <div class="overlay-strength">
-              <label>Darken</label>
-              <input type="range" min="0" max="0.9" step="0.05" value="${clue.bgOverlay}" oninput="updateClue('bgOverlay', parseFloat(this.value))">
-            </div>
-          ` : `
-            <div class="img-dropzone">
-              <input type="file" accept="image/*" onchange="handleImage(this)">
-              <div class="dz-icon">🖼️</div>
-              <div class="dz-label">Upload background</div>
-            </div>
-          `}
+        <div class="editor-card">
+            <label>Stop Title</label>
+            <input type="text" value="${clue.title}" oninput="state.clues[${idx}].title=this.value; renderSidebar()">
+            <label style="display:block; margin-top:15px">Clue Text</label>
+            <textarea rows="4" oninput="state.clues[${idx}].clue=this.value">${clue.clue}</textarea>
         </div>
-        <div>
-           <label>Accent Override</label>
-           <input type="color" value="${clue.accentColor || state.theme.accentColor}" oninput="updateClue('accentColor', this.value)">
-        </div>
-      </div>
-    </div>
-  `;
-
-  new QRCode(document.getElementById("qrcode"), {
-    text: stopUrl,
-    width: 160,
-    height: 160,
-    colorDark: "#000000",
-    colorLight: "#ffffff",
-    correctLevel: QRCode.CorrectLevel.H
-  });
+    `;
 }
-
-function updateClue(key, val) {
-  state.clues[selectedClueIdx][key] = val;
-  saveState();
-  if (key === 'title' || key === 'bgImage') renderSidebar();
-}
-
-function handleImage(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    updateClue('bgImage', e.target.result);
-    updateClue('bgImageName', file.name);
-    renderEditor();
-  };
-  reader.readAsDataURL(file);
-}
-
-function removeImage() {
-  updateClue('bgImage', null);
-  updateClue('bgImageName', '');
-  renderEditor();
-}
-
-function renderThemeStudio() {
-  const container = document.getElementById('themeStudio');
-  const t = state.theme;
-
-  container.innerHTML = `
-    <div class="ts-preview-wrap">
-      <div id="ts-preview-card">
-        <div class="ts-preview-badge">STOP 1 OF 5</div>
-        <div class="ts-preview-progress"><div class="ts-preview-prog-fill"></div></div>
-        <h2 class="ts-preview-title">PREVIEW</h2>
-        <p class="ts-preview-clue">Visual style preview.</p>
-      </div>
-    </div>
-    <div class="ts-section open">
-      <div class="ts-row"><label>Accent Color</label><input type="color" value="${t.accentColor}" oninput="updateTheme('accentColor', this.value)"></div>
-      <div class="ts-row"><label>Page Background</label><input type="color" value="${t.pageBg}" oninput="updateTheme('pageBg', this.value)"></div>
-      <div class="ts-row"><label>Card Background</label><input type="color" value="${t.cardBg}" oninput="updateTheme('cardBg', this.value)"></div>
-    </div>
-  `;
-}
-
-function updateTheme(key, val) {
-  state.theme[key] = val;
-  applyTheme(state.theme);
-  saveState();
-  renderThemeStudio();
-}
-
-function showSettingsModal() {
-  document.getElementById('settingTrailName').value = state.trailName;
-  document.getElementById('settingBaseUrl').value = state.baseUrl;
-  document.getElementById('settingFinishMsg').value = state.finishMsg;
-  document.getElementById('settingsOverlay').classList.add('active');
-}
-function closeSettingsModal() { document.getElementById('settingsOverlay').classList.remove('active'); }
-
-function saveSettings() {
-  state.trailName = document.getElementById('settingTrailName').value;
-  state.baseUrl = document.getElementById('settingBaseUrl').value;
-  state.finishMsg = document.getElementById('settingFinishMsg').value;
-  const newPin = document.getElementById('settingPin').value;
-  if (newPin && newPin.length === 4) state.pin = newPin;
-  saveState();
-  closeSettingsModal();
-  toast('Settings saved.');
-}
-
-function toast(msg, type = '') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show ' + type;
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-function downloadQR(idx) {
-  const canvas = document.querySelector('#qrcode canvas');
-  if (!canvas) return;
-  const link = document.createElement('a');
-  link.download = `qr-stop-${idx + 1}.png`;
-  link.href = canvas.toDataURL();
-  link.click();
-}
-```
+</script>
+</body>
+</html>
