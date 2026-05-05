@@ -60,6 +60,32 @@
   .btn-danger:hover { background: var(--danger); color: #fff; }
   .btn-sm { padding: 6px 14px; font-size: 13px; }
 
+  /* ── SETTINGS TABS ── */
+  .stab-row { display:flex; gap:0; margin-bottom:20px; border-bottom:1px solid var(--border); }
+  .stab {
+    padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer;
+    background:transparent; color:var(--muted); border:none;
+    border-bottom:2px solid transparent; margin-bottom:-1px; transition: all .15s;
+  }
+  .stab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+  .stab-panel { display:none; }
+  .stab-panel.active { display:block; }
+
+  /* Theme presets */
+  .preset-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px; }
+  .preset-btn {
+    border-radius:8px; padding:10px 6px; font-size:11px; font-weight:700;
+    cursor:pointer; border:2px solid transparent; transition: all .15s;
+    text-align:center; letter-spacing:.04em;
+  }
+  .preset-btn:hover { transform:scale(1.04); }
+  .preset-btn.selected { border-color: #fff !important; }
+
+  .color-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .color-swatch-wrap { display:flex; gap:8px; align-items:center; }
+  .color-swatch-wrap input[type=color] { width:40px; height:34px; padding:2px; border-radius:6px; cursor:pointer; flex-shrink:0; }
+
   /* ── HOME ── */
   #home {
     align-items: center; justify-content: center;
@@ -298,7 +324,7 @@
 <!-- ADMIN -->
 <div id="admin" class="page">
   <nav class="admin-nav">
-    <span class="logo-sm">QR TRAIL</span>
+    <span class="logo-sm" id="adminLogoText">QR TRAIL</span>
     <div style="display:flex;gap:10px;align-items:center">
       <button class="btn btn-sm btn-outline" onclick="showSettingsModal()">⚙ Settings</button>
       <button class="btn btn-sm btn-outline" onclick="showPage('home')">Exit</button>
@@ -357,25 +383,109 @@
 
 <!-- Settings modal -->
 <div class="overlay" id="settingsOverlay">
-  <div class="overlay-card" style="text-align:left">
-    <h2 class="overlay-title" style="margin-bottom:18px">SETTINGS</h2>
-    <div class="field">
-      <label>Trail Name</label>
-      <input type="text" id="settingTrailName" placeholder="e.g. Campus Hunt 2025" />
+  <div class="overlay-card" style="text-align:left;max-width:520px;max-height:90vh;overflow-y:auto">
+    <h2 class="overlay-title" style="margin-bottom:14px">SETTINGS</h2>
+
+    <!-- Tabs -->
+    <div class="stab-row">
+      <button class="stab active" onclick="switchTab('general')">General</button>
+      <button class="stab" onclick="switchTab('theme')">Admin Theme</button>
     </div>
-    <div class="field">
-      <label>Base URL (where this file is hosted)</label>
-      <input type="text" id="settingBaseUrl" placeholder="https://yourusername.github.io/your-repo/qr-orienteering.html" />
+
+    <!-- GENERAL tab -->
+    <div class="stab-panel active" id="tab-general">
+      <div class="field">
+        <label>Trail Name</label>
+        <input type="text" id="settingTrailName" placeholder="e.g. Campus Hunt 2025" />
+      </div>
+      <div class="field">
+        <label>Base URL (where this file is hosted)</label>
+        <input type="text" id="settingBaseUrl" placeholder="https://yourusername.github.io/your-repo/qr-orienteering.html" />
+      </div>
+      <div class="field">
+        <label>Finish Message</label>
+        <textarea id="settingFinishMsg" rows="2" placeholder="Congratulations! You completed the trail."></textarea>
+      </div>
+      <div class="field">
+        <label>Change Admin PIN</label>
+        <input type="password" id="settingPin" placeholder="New 4-digit PIN" maxlength="4" />
+      </div>
     </div>
-    <div class="field">
-      <label>Finish Message</label>
-      <textarea id="settingFinishMsg" rows="2" placeholder="Congratulations! You completed the trail."></textarea>
+
+    <!-- ADMIN THEME tab -->
+    <div class="stab-panel" id="tab-theme">
+
+      <div class="field">
+        <label>Admin Panel Logo Text</label>
+        <input type="text" id="themeLogoText" placeholder="QR TRAIL" oninput="liveThemePreview()" maxlength="20" />
+      </div>
+
+      <div class="field">
+        <label style="margin-bottom:8px">Quick Presets</label>
+        <div class="preset-grid" id="presetGrid">
+          <button class="preset-btn" style="background:#0a0a0a;color:#e8ff47;border-color:#2a2a2a" onclick="applyPreset('dark')">DARK</button>
+          <button class="preset-btn" style="background:#0f172a;color:#38bdf8;border-color:#1e3a5f" onclick="applyPreset('ocean')">OCEAN</button>
+          <button class="preset-btn" style="background:#1a0a2e;color:#bf7fff;border-color:#3d1f66" onclick="applyPreset('purple')">PURPLE</button>
+          <button class="preset-btn" style="background:#0d1f12;color:#4ade80;border-color:#1a3d24" onclick="applyPreset('forest')">FOREST</button>
+          <button class="preset-btn" style="background:#1f0d0d;color:#ff6b6b;border-color:#3d1a1a" onclick="applyPreset('crimson')">CRIMSON</button>
+          <button class="preset-btn" style="background:#1a1400;color:#fbbf24;border-color:#3d3000" onclick="applyPreset('gold')">GOLD</button>
+          <button class="preset-btn" style="background:#f0f0f0;color:#0a0a0a;border-color:#ccc" onclick="applyPreset('light')">LIGHT</button>
+          <button class="preset-btn" style="background:#fff7ed;color:#ea580c;border-color:#fed7aa" onclick="applyPreset('sunset')">SUNSET</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label style="margin-bottom:10px;font-size:13px;color:var(--text)">Custom Colors</label>
+        <div class="color-row">
+          <div class="field">
+            <label>Page Background</label>
+            <div class="color-swatch-wrap">
+              <input type="color" id="themeBg" oninput="liveThemePreview()" />
+              <input type="text" id="themeBgHex" oninput="syncColorPicker('themeBg','themeBgHex')" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Surface / Cards</label>
+            <div class="color-swatch-wrap">
+              <input type="color" id="themeSurface" oninput="liveThemePreview()" />
+              <input type="text" id="themeSurfaceHex" oninput="syncColorPicker('themeSurface','themeSurfaceHex')" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Borders</label>
+            <div class="color-swatch-wrap">
+              <input type="color" id="themeBorder" oninput="liveThemePreview()" />
+              <input type="text" id="themeBorderHex" oninput="syncColorPicker('themeBorder','themeBorderHex')" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Accent Color</label>
+            <div class="color-swatch-wrap">
+              <input type="color" id="themeAccent" oninput="liveThemePreview()" />
+              <input type="text" id="themeAccentHex" oninput="syncColorPicker('themeAccent','themeAccentHex')" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Main Text</label>
+            <div class="color-swatch-wrap">
+              <input type="color" id="themeText" oninput="liveThemePreview()" />
+              <input type="text" id="themeTextHex" oninput="syncColorPicker('themeText','themeTextHex')" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Muted Text</label>
+            <div class="color-swatch-wrap">
+              <input type="color" id="themeMuted" oninput="liveThemePreview()" />
+              <input type="text" id="themeMutedHex" oninput="syncColorPicker('themeMuted','themeMutedHex')" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-danger btn-sm" onclick="resetTheme()" style="margin-bottom:6px">↺ Reset to Default</button>
     </div>
-    <div class="field">
-      <label>Change Admin PIN</label>
-      <input type="password" id="settingPin" placeholder="New 4-digit PIN" maxlength="4" />
-    </div>
-    <div style="display:flex;gap:10px;margin-top:6px">
+
+    <div style="display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
       <button class="btn btn-outline" onclick="closeSettingsModal()">Cancel</button>
       <button class="btn btn-accent" onclick="saveSettings()">Save Settings</button>
     </div>
@@ -388,11 +498,25 @@
 // ═══════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════
+const THEME_PRESETS = {
+  dark:    { bg:'#0a0a0a', surface:'#141414', border:'#2a2a2a', accent:'#e8ff47', text:'#f0f0f0', muted:'#666666' },
+  ocean:   { bg:'#0f172a', surface:'#1e293b', border:'#1e3a5f', accent:'#38bdf8', text:'#e2e8f0', muted:'#64748b' },
+  purple:  { bg:'#1a0a2e', surface:'#2d1b4e', border:'#3d1f66', accent:'#bf7fff', text:'#ede9fe', muted:'#7c6fa0' },
+  forest:  { bg:'#0d1f12', surface:'#1a3320', border:'#1a3d24', accent:'#4ade80', text:'#dcfce7', muted:'#4d7a5a' },
+  crimson: { bg:'#1f0d0d', surface:'#331515', border:'#3d1a1a', accent:'#ff6b6b', text:'#fee2e2', muted:'#7a4d4d' },
+  gold:    { bg:'#1a1400', surface:'#2e2400', border:'#3d3000', accent:'#fbbf24', text:'#fef3c7', muted:'#7a6a30' },
+  light:   { bg:'#f0f0f0', surface:'#ffffff', border:'#d0d0d0', accent:'#2563eb', text:'#1a1a1a', muted:'#666666' },
+  sunset:  { bg:'#fff7ed', surface:'#ffffff', border:'#fed7aa', accent:'#ea580c', text:'#431407', muted:'#9a6347' },
+};
+
+const DEFAULT_ADMIN_THEME = { ...THEME_PRESETS.dark, logoText: 'QR TRAIL' };
+
 const DEFAULT_STATE = {
   pin: '1234',
   trailName: 'QR Trail',
   baseUrl: window.location.href.split('?')[0],
   finishMsg: 'You completed the trail. Amazing work!',
+  adminTheme: { ...DEFAULT_ADMIN_THEME },
   clues: [{
     id: 'stop1',
     title: 'THE BEGINNING',
@@ -419,6 +543,8 @@ function loadState() {
       textColor: '#ffffff', accentColor: '#e8ff47',
       ...c
     }));
+    // Migrate: ensure adminTheme exists
+    parsed.adminTheme = { ...DEFAULT_ADMIN_THEME, ...(parsed.adminTheme || {}) };
     return parsed;
   } catch(e) { return JSON.parse(JSON.stringify(DEFAULT_STATE)); }
 }
@@ -440,6 +566,7 @@ function showPage(id) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  applyAdminTheme(state.adminTheme);
   const params   = new URLSearchParams(window.location.search);
   const stopParam = params.get('stop');
   if (stopParam !== null) {
@@ -798,21 +925,111 @@ function copyUrl(url) {
 // ═══════════════════════════════════════════
 //  SETTINGS
 // ═══════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.stab').forEach((b,i) => b.classList.toggle('active', ['general','theme'][i] === name));
+  document.querySelectorAll('.stab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
 function showSettingsModal() {
+  const t = state.adminTheme;
+  // General tab
   document.getElementById('settingTrailName').value = state.trailName;
   document.getElementById('settingBaseUrl').value   = state.baseUrl;
   document.getElementById('settingFinishMsg').value = state.finishMsg;
   document.getElementById('settingPin').value       = '';
+  // Theme tab
+  document.getElementById('themeLogoText').value    = t.logoText || 'QR TRAIL';
+  setColorFields('themeBg',      'themeBgHex',      t.bg);
+  setColorFields('themeSurface', 'themeSurfaceHex', t.surface);
+  setColorFields('themeBorder',  'themeBorderHex',  t.border);
+  setColorFields('themeAccent',  'themeAccentHex',  t.accent);
+  setColorFields('themeText',    'themeTextHex',    t.text);
+  setColorFields('themeMuted',   'themeMutedHex',   t.muted);
+  switchTab('general');
   document.getElementById('settingsOverlay').classList.add('active');
 }
-function closeSettingsModal() { document.getElementById('settingsOverlay').classList.remove('active'); }
+
+function setColorFields(pickerId, hexId, value) {
+  const v = value || '#000000';
+  document.getElementById(pickerId).value = v;
+  document.getElementById(hexId).value    = v;
+}
+
+function syncColorPicker(pickerId, hexId) {
+  const val = document.getElementById(hexId).value;
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    document.getElementById(pickerId).value = val;
+    liveThemePreview();
+  }
+}
+
+function liveThemePreview() {
+  // Apply colors live as user picks them
+  applyAdminTheme(readThemeFromForm());
+}
+
+function readThemeFromForm() {
+  return {
+    logoText: document.getElementById('themeLogoText').value.trim() || 'QR TRAIL',
+    bg:       document.getElementById('themeBg').value,
+    surface:  document.getElementById('themeSurface').value,
+    border:   document.getElementById('themeBorder').value,
+    accent:   document.getElementById('themeAccent').value,
+    text:     document.getElementById('themeText').value,
+    muted:    document.getElementById('themeMuted').value,
+  };
+}
+
+function applyAdminTheme(t) {
+  if (!t) return;
+  const r = document.documentElement;
+  r.style.setProperty('--bg',      t.bg      || '#0a0a0a');
+  r.style.setProperty('--surface', t.surface || '#141414');
+  r.style.setProperty('--border',  t.border  || '#2a2a2a');
+  r.style.setProperty('--accent',  t.accent  || '#e8ff47');
+  r.style.setProperty('--text',    t.text    || '#f0f0f0');
+  r.style.setProperty('--muted',   t.muted   || '#666666');
+  const logo = document.getElementById('adminLogoText');
+  if (logo) logo.textContent = t.logoText || 'QR TRAIL';
+}
+
+function applyPreset(name) {
+  const preset = THEME_PRESETS[name];
+  if (!preset) return;
+  setColorFields('themeBg',      'themeBgHex',      preset.bg);
+  setColorFields('themeSurface', 'themeSurfaceHex', preset.surface);
+  setColorFields('themeBorder',  'themeBorderHex',  preset.border);
+  setColorFields('themeAccent',  'themeAccentHex',  preset.accent);
+  setColorFields('themeText',    'themeTextHex',    preset.text);
+  setColorFields('themeMuted',   'themeMutedHex',   preset.muted);
+  liveThemePreview();
+}
+
+function resetTheme() {
+  applyPreset('dark');
+  document.getElementById('themeLogoText').value = 'QR TRAIL';
+  liveThemePreview();
+}
+
+function closeSettingsModal() {
+  // Revert live preview if cancelled
+  applyAdminTheme(state.adminTheme);
+  document.getElementById('settingsOverlay').classList.remove('active');
+}
+
 function saveSettings() {
-  state.trailName = document.getElementById('settingTrailName').value.trim() || 'QR Trail';
-  state.baseUrl   = document.getElementById('settingBaseUrl').value.trim()   || window.location.href.split('?')[0];
-  state.finishMsg = document.getElementById('settingFinishMsg').value.trim() || state.finishMsg;
-  const newPin    = document.getElementById('settingPin').value.trim();
+  state.trailName   = document.getElementById('settingTrailName').value.trim() || 'QR Trail';
+  state.baseUrl     = document.getElementById('settingBaseUrl').value.trim()   || window.location.href.split('?')[0];
+  state.finishMsg   = document.getElementById('settingFinishMsg').value.trim() || state.finishMsg;
+  const newPin      = document.getElementById('settingPin').value.trim();
   if (newPin.length === 4 && /^\d{4}$/.test(newPin)) state.pin = newPin;
-  saveState(); closeSettingsModal(); toast('Settings saved!', 'success');
+  // Save theme
+  state.adminTheme  = readThemeFromForm();
+  applyAdminTheme(state.adminTheme);
+  saveState();
+  document.getElementById('settingsOverlay').classList.remove('active');
+  toast('Settings saved!', 'success');
   if (selectedClueIdx !== null) renderEditor(selectedClueIdx);
 }
 
