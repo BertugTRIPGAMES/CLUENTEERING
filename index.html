@@ -1,77 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLUENTEERING | QR Trail</title>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <style>
-        :root {
-            --bg: #0f0f0f; --card: #1a1a1a; --text: #ffffff; --muted: #888;
-            --accent: #e8ff47; --border: #333;
-        }
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); }
-        .page { display: none; min-height: 100vh; padding: 20px; box-sizing: border-box; }
-        .page.active { display: flex; flex-direction: column; }
-        
-        /* ADMIN LAYOUT */
-        .admin-shell { display: grid; grid-template-columns: 280px 1fr; height: 100vh; margin: -20px; }
-        .sidebar { background: #151515; border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
-        .editor { padding: 40px; overflow-y: auto; background: var(--bg); }
-        
-        .clue-item { 
-            padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer;
-            border: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: #1a1a1a;
-        }
-        .clue-item:hover { border-color: var(--muted); }
-        .clue-item.selected { border-color: var(--accent); background: #222; }
-        
-        .btn { padding: 10px 20px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; transition: 0.2s; }
-        .btn-accent { background: var(--accent); color: black; }
-        .btn-danger { background: #ff4747; color: white; margin-left: 10px; }
-        .btn-outline { background: transparent; border: 1px solid var(--border); color: white; }
-
-        .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .editor-card { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border); }
-        
-        label { display: block; margin: 15px 0 5px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
-        textarea, input { width: 100%; padding: 12px; background: #000; border: 1px solid var(--border); color: white; border-radius: 6px; box-sizing: border-box; }
-        
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .qr-box { background: white; padding: 10px; display: inline-block; border-radius: 8px; }
-    </style>
-</head>
-<body>
-
-<div id="pin" class="page active" style="align-items:center; justify-content:center; text-align:center;">
-    <h1>CLUENTEERING</h1>
-    <p style="color:var(--muted)">Admin Access</p>
-    <input type="password" id="pinInput" maxlength="4" style="width:100px; font-size:24px; text-align:center;" oninput="checkPin()">
-</div>
-
-<div id="admin" class="page">
-    <div class="admin-shell">
-        <div class="sidebar">
-            <h3 style="margin-top:0">STOPS</h3>
-            <div id="clueList"></div>
-            <button class="btn btn-accent" style="width:100%; margin-top:10px" onclick="addClue()">+ Add Stop</button>
-            
-            <h3 style="margin-top:40px">GLOBAL THEME</h3>
-            <label>Accent Color</label>
-            <input type="color" id="globalAccent" oninput="updateGlobalAccent(this.value)">
-            <label>Card BG</label>
-            <input type="color" oninput="document.documentElement.style.setProperty('--card', this.value)">
-        </div>
-        
-        <div class="editor" id="editorArea">
-            <div style="text-align:center; color:var(--muted); margin-top:100px;">
-                <h2>Select a stop to customize</h2>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
+// --- STATE MANAGEMENT ---
 let state = {
     pin: '1234',
     clues: [{ 
@@ -82,6 +10,35 @@ let state = {
     }]
 };
 
+// --- PAGE ROUTING (The Fix for the Blank/Same Page issue) ---
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const stopIdx = params.get('stop');
+
+    if (stopIdx !== null) {
+        // If the URL has ?stop=X, show the Player View
+        renderPlayerView(parseInt(stopIdx));
+    }
+});
+
+function renderPlayerView(idx) {
+    const clue = state.clues[idx];
+    if (!clue) return;
+
+    // Replace the whole screen with the Clue Card
+    document.body.innerHTML = `
+        <div style="background: ${clue.bgImage ? 'black' : 'var(--bg)'}; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; font-family: sans-serif;">
+            <div style="background: var(--card); border: 2px solid ${clue.accentColor}; padding: 40px; border-radius: 20px; max-width: 500px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+                <div style="color: ${clue.accentColor}; font-weight: bold; letter-spacing: 2px; margin-bottom: 10px;">STOP ${idx + 1}</div>
+                <h1 style="margin: 0 0 20px 0; font-size: 32px;">${clue.title}</h1>
+                <p style="font-size: 18px; line-height: 1.6; color: #ccc;">${clue.clue}</p>
+                <button onclick="window.location.href=window.location.pathname" style="margin-top: 30px; background: transparent; border: 1px solid #444; color: #888; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Back to Admin</button>
+            </div>
+        </div>
+    `;
+}
+
+// --- ADMIN FUNCTIONS ---
 function checkPin() {
     if (document.getElementById('pinInput').value === state.pin) {
         document.getElementById('pin').classList.remove('active');
@@ -110,7 +67,7 @@ function addClue() {
 
 function deleteClue(idx) {
     if (state.clues.length <= 1) return alert("Must have at least one stop.");
-    if (confirm("Delete this stop permanently?")) {
+    if (confirm("Delete this stop?")) {
         state.clues.splice(idx, 1);
         renderSidebar();
         document.getElementById('editorArea').innerHTML = '<h2>Select a stop</h2>';
@@ -121,56 +78,37 @@ function updateGlobalAccent(val) {
     document.documentElement.style.setProperty('--accent', val);
 }
 
-function handleImage(idx, input) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        state.clues[idx].bgImage = e.target.result;
-        alert("Image uploaded for this stop!");
-    };
-    reader.readAsDataURL(input.files[0]);
+function openPreview(idx) {
+    const stopUrl = window.location.pathname + "?stop=" + idx;
+    // Open in a named window to try and re-use the tab
+    window.open(stopUrl, "clue_preview");
 }
 
 function renderEditor(idx) {
     const clue = state.clues[idx];
     const area = document.getElementById('editorArea');
-    const stopUrl = window.location.href.split('?')[0] + "?stop=" + idx;
+    const stopUrl = window.location.origin + window.location.pathname + "?stop=" + idx;
 
     area.innerHTML = `
         <div class="editor-header">
             <h1>Editing Stop ${idx + 1}</h1>
             <div>
-                <button class="btn btn-outline" onclick="window.open('${stopUrl}')">👁️ Preview</button>
+                <button class="btn btn-outline" onclick="openPreview(${idx})">👁️ Preview</button>
                 <button class="btn btn-danger" onclick="deleteClue(${idx})">🗑 Delete</button>
             </div>
         </div>
-
         <div class="grid">
             <div class="editor-card">
                 <h3>QR CODE</h3>
                 <div id="qrcode" class="qr-box"></div>
-                <p style="font-size:12px; color:var(--muted); margin-top:10px;">${stopUrl}</p>
+                <p style="font-size:10px; color:var(--muted); word-break:break-all;">${stopUrl}</p>
             </div>
-
             <div class="editor-card">
                 <h3>CONTENT</h3>
                 <label>Title</label>
                 <input type="text" value="${clue.title}" oninput="state.clues[${idx}].title=this.value; renderSidebar()">
                 <label>Clue Text</label>
                 <textarea rows="5" oninput="state.clues[${idx}].clue=this.value">${clue.clue}</textarea>
-            </div>
-        </div>
-
-        <div class="editor-card">
-            <h3>VISUAL OVERRIDES</h3>
-            <div class="grid">
-                <div>
-                    <label>Stop Accent Color</label>
-                    <input type="color" value="${clue.accentColor}" oninput="state.clues[${idx}].accentColor=this.value">
-                </div>
-                <div>
-                    <label>Background Image</label>
-                    <input type="file" accept="image/*" onchange="handleImage(${idx}, this)">
-                </div>
             </div>
         </div>
     `;
@@ -181,5 +119,3 @@ function renderEditor(idx) {
     });
 }
 </script>
-</body>
-</html>
