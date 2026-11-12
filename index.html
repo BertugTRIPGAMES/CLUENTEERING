@@ -1,7 +1,8 @@
 <html lang="en" style="--bg: #fff7ed; --surface: #ffffff; --border: #fed7aa; --accent: #ea580c; --text: #431407; --muted: #9a6347;"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QR Trail</title>
+<title>Cluenteering</title>
+<link rel="icon" type="image/x-icon" href="yo io30 was here/Cluenteering.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -292,7 +293,7 @@
 
 <!-- HOME -->
 <div id="home" class="page">
-  <div class="logo">QR<br>TRAIL</div>
+  <div class="logo">CLUENTEERING</div>
   <p class="tagline">GPS-free orienteering powered by QR codes and clever clues.</p>
   <div class="home-btns">
     <button class="btn btn-accent" style="font-size:16px" onclick="showPage('setup')">⚙️ Admin Panel</button>
@@ -324,7 +325,7 @@
   <nav class="admin-nav">
     <span class="logo-sm" id="adminLogoText">CLUEENTEERING</span>
     <div style="display:flex;gap:10px;align-items:center">
-      <button class="btn btn-sm btn-accent" onclick="exportForDeployment()" title="Bake your clues into the file and download for GitHub">🚀 Export for GitHub</button>
+      <button class="btn btn-sm btn-accent" onclick="exportForDeployment()" title="Bake your clues into the file and download for GitHub">Export for GitHub</button>
       <button class="btn btn-sm btn-outline" onclick="showSettingsModal()">⚙ Settings</button>
       <button class="btn btn-sm btn-outline" onclick="showPage('home')">Exit</button>
     </div>
@@ -398,8 +399,8 @@
             Players scanning out of order get sent back.
           </p>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm btn-accent" onclick="downloadQR(0)">⬇ Download QR</button>
-            <button class="btn btn-sm btn-outline" onclick="copyUrl('https://bertugtripgames.github.io/CLUENTEERING/?stop=0')">📋 Copy URL</button>
+            <button class="btn btn-sm btn-accent" onclick="downloadQR(0)">Download QR</button>
+            <button class="btn btn-sm btn-outline" onclick="copyUrl('https://bertugtripgames.github.io/CLUENTEERING/?stop=0')">Copy URL</button>
           </div>
         </div>
       </div>
