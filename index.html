@@ -190,6 +190,7 @@
             if (document.getElementById("pinInput").value.length === 4) {
                 if (document.getElementById("pinInput").value == 1234) {
                     setTimeout(() => {
+                        closePopup();
                         window.location.href = "editor.html";
                     }, 300);
                 } else {
